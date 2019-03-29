@@ -1,7 +1,7 @@
 package leetCode;
 
 import java.util.Stack;
-
+//此算法时间复杂度和空间复杂度都是O(n)
 public class Solution1 {
 	public boolean isValid(String s) {
 		Stack<Character> stack = new Stack<Character>();
