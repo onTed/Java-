@@ -1,0 +1,22 @@
+  shiro-->核心组件securityManager。核心功能：登陆校验，授权，加密，会话。
+       -->基于url的请求拦截
+           <property name="filterChainDefinitions"> 
+              <value> 
+              /shiro-cas*=cas 
+              /logout.do*=anon 
+              /casticketerror.do*=anon 
+
+               # 权限配置示例
+                /security/account/view.do=authc,perms[SECURITY_ACCOUNT_VIEW] 
+
+                /** = authc 
+              </value> 
+          </property> 
+       -->异或门XOR
+         A   B 	  OR	 NAND	XOR
+         0	 0	  0	   1	   0
+         0	 1	  1	   1	   1
+         1	 0	  1	   1	   1
+         1	 1	  1	   0	   0
+       -->递归找出孤独的树
+       -->递归看二叉树是否对称
