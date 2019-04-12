@@ -1,0 +1,13 @@
+Spring boot精髓
+
+1.Spring boot启动会加载大量的自动配置类
+2.我们看我们需要的功能有没有Spring boot默认写好的自动配置类
+3.我们再来看这个自动配置类中到底配了那些组件(只要有我们要用的组件，我们就不需要再配置了)
+4.给Spring容器中的自动配置类添加组件时，会从properties类中获取某些属性。这些属性我们就可以在Spring boot文件中写这些属性
+
+
+
+XxxAutoConfiguration-->自动配置类
+自动配置类会给容器中添加组件
+
+XxxProperties-->封装配置文件中的属性
