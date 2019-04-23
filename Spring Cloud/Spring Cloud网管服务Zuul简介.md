@@ -1,4 +1,4 @@
-## Spring Cloud网管服务Zuul简介
+## Spring Cloud网关服务Zuul简介
 
 Zuul是一款提供动态路由，监控，弹性，安全的网关服务。
 
