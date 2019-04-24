@@ -4,7 +4,7 @@
 
 分布式系统的最大难点，就是各个节点的状态如何同步。CAP定理是这方面的基本定理，也是理解分布式系统的起点。
 
-![img](https://github.com/onTed/program/blob/master/CAP/pic/bg2018071601.png)
+![img](https://github.com/onTed/program/blob/master/CAP/pic/bg2018071607.jpg)
 
 ## 2.CAP的含义
 
