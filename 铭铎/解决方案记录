@@ -1,0 +1,16 @@
+一.登陆进系统需要查询用户的权限，权限的数据结构是
+账号
+姓名
+角色code
+角色名称
+菜单集合：
+       一级菜单：
+            二级菜单：
+                按钮集合
+                
+    因为一级菜单/二级菜单可能存在重复的情况所以之前使用了HashSet存储一级菜单和二级菜单。后来联调时前端发现每次进入系统菜单
+的顺序都发生了变化，为了解决这个问题我便将set的实现改了( HashSet --> TreeSet )。并且还让两个bean实现了Comparable接口
+public class MenuDTO implements Comparable<MenuDTO> {
+
+}
+
