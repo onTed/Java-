@@ -17,6 +17,6 @@ public class LockSupportDemo {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        LockSupport.unpark(t);
+        LockSupport.unpark(t);//唤醒t线程
     }
 }
