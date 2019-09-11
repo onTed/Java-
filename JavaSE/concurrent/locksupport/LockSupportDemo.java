@@ -6,7 +6,7 @@ public class LockSupportDemo {
 
     public static void main(String[] args) {
         Thread t = new Thread(() -> {
-            LockSupport.park();
+            LockSupport.park();//阻塞当前线程
             System.out.println(Thread.currentThread().getName() + "---被唤醒了。");
         });
         t.start();
