@@ -1,0 +1,511 @@
+package com.mid.admin.service.impl;
+
+import com.google.common.collect.Maps;
+import com.mid.admin.bean.comparator.MenuButtonDTOComparator;
+import com.mid.admin.bean.comparator.MenuDTOComparator;
+import com.mid.admin.bean.dto.MenuButtonDTO;
+import com.mid.admin.bean.dto.MenuDTO;
+import com.mid.admin.bean.dto.UserRoleMenuDTO;
+import com.mid.admin.bean.request.*;
+import com.mid.admin.bean.response.*;
+import com.mid.admin.module.*;
+import com.mid.admin.repository.*;
+import com.mid.admin.service.UserTokenService;
+import com.mid.common.bean.BusinessCode;
+import com.mid.common.bean.MidResponse;
+import com.mid.common.exception.BusinessException;
+import com.mid.common.util.MD5;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
+
+import java.util.*;
+
+@Slf4j
+@Service
+public class UserTokenServiceImpl implements UserTokenService {
+
+
+    @Autowired
+    private UserTokenRepository userTokenRepository;
+    @Autowired
+    private BackstageUserRepository backstageUserRepository;
+    @Autowired
+    private RoleRepository roleRepository;
+    @Autowired
+    private RoleMenuButtonRepository roleMenuButtonRepository;
+    @Autowired
+    private MenuRepository menuRepository;
+    @Autowired
+    private ButtonRepository buttonRepository;
+    @Autowired
+    private UserProjectRepository userProjectRepository;
+    @Autowired
+    private MidUserH5TokenRepo midUserH5TokenRepo;
+
+    private final int TOKEN_EXPIRED_TIME = 12 * 60 * 60 * 1000;
+
+    @Override
+    public String operateToken(String userName, UserToken requestParam) {
+        return null;
+    }
+
+
+    @Override
+    public MidCheckTokenResponse checkToken(MidCheckTokenRequest request) {
+        UserToken userToken = userTokenRepository.checkToken(request.getToken());
+        if (userToken == null) {
+            throw new BusinessException(BusinessCode.CODE_TOKEN_INVALID);
+        }
+
+        MidCheckTokenResponse response = new MidCheckTokenResponse();
+
+        User user = backstageUserRepository.findUserByAccount(userToken.getUserAccount());
+
+        if (user.getIsAllProjectPermissions()) {
+            response.setIsAllProjectPermissions(1);
+            return response;
+        }
+
+        List<MidUserProject> userProjects = userProjectRepository.findByUserIdAndIsEnable(user.getId(), true);
+
+        List<String> projectCodes = new ArrayList<>();
+
+        for (MidUserProject userProject : userProjects) {
+            projectCodes.add(userProject.getProjectCode());
+        }
+
+        response.setProjectCodes(projectCodes);
+        return response;
+    }
+
+    @Override
+    public MidCheckTokenResponse getPermission(GetPermissionRequest request) {
+        MidCheckTokenResponse response = new MidCheckTokenResponse();
+
+        User user = backstageUserRepository.findThroughIdAndEnable(request.getId());
+        if(user == null) {
+            throw  new BusinessException(BusinessCode.PARAM_ERROR);
+        }
+        if (user.getIsAllProjectPermissions()) {
+            response.setIsAllProjectPermissions(1);
+            return response;
+        }
+
+        List<MidUserProject> userProjects = userProjectRepository.findByUserIdAndIsEnable(user.getId(), true);
+
+        List<String> projectCodes = new ArrayList<>();
+
+        for (MidUserProject userProject : userProjects) {
+            projectCodes.add(userProject.getProjectCode());
+        }
+
+        response.setProjectCodes(projectCodes);
+        return response;
+    }
+
+    @Override
+    public GetCurrentOperatorResponse getCurrentOperator(GetCurrentOperatorRequest request) {
+        User backstageUser = backstageUserRepository.findUserByAccount(request.getUserAccount());
+        if (null == backstageUser) {
+            throw new BusinessException(BusinessCode.THIS_USERACCOUNT_NOT_EXIST);
+        }
+        GetCurrentOperatorResponse getCurrentOperatorResponse = new GetCurrentOperatorResponse(backstageUser.getId(), backstageUser.getUserAccount(),
+                backstageUser.getRealName());
+        return getCurrentOperatorResponse;
+    }
+
+    @Override
+    public GetOperatorByIdResponse getOperatorById(GetOperatorByIdRequest request) {
+        User backstageUser = backstageUserRepository.findThroughId(request.getId());
+        if (null == backstageUser) {
+            throw new BusinessException(BusinessCode.THIS_USERACCOUNT_NOT_EXIST);
+        }
+        GetOperatorByIdResponse getOperatorByIdResponse = new GetOperatorByIdResponse();
+        BeanUtils.copyProperties(backstageUser, getOperatorByIdResponse);
+        return getOperatorByIdResponse;
+    }
+
+    @Override
+    public GetManyCurrentOperatorResponse getOperatorByIds(GetOperatorByManyIdRequest request) {
+        List<User> userList = backstageUserRepository.getOperatorByIds(request.getIds());
+        if (userList != null && userList.size() > 0) {
+            List<GetCurrentOperatorResponse> getCurrentOperatorResponseList = new ArrayList<>();
+            for (User backstageUser : userList) {
+                if (null != backstageUser) {
+                    GetCurrentOperatorResponse getCurrentOperatorResponse = new GetCurrentOperatorResponse(backstageUser.getId(), backstageUser.getUserAccount(),
+                            backstageUser.getRealName());
+                    getCurrentOperatorResponseList.add(getCurrentOperatorResponse);
+                }
+            }
+            GetManyCurrentOperatorResponse getManyCurrentOperatorResponse = new GetManyCurrentOperatorResponse();
+            getManyCurrentOperatorResponse.setGetCurrentOperatorResponseList(getCurrentOperatorResponseList);
+
+            return getManyCurrentOperatorResponse;
+        } else {
+            throw new BusinessException(BusinessCode.THIS_USERACCOUNT_NOT_EXIST);
+        }
+    }
+
+    @Override
+    public GetManyCurrentOperatorResponse getManyCurrentOperator(GetManyCurrentOperatorRequest request) {
+
+        List<User> userList = backstageUserRepository.getManyCurrentOperator(request.getManyUserAccount());
+        if (userList != null && userList.size() > 0) {
+            List<GetCurrentOperatorResponse> getCurrentOperatorResponseList = new ArrayList<>();
+            for (User backstageUser : userList) {
+                if (null != backstageUser) {
+                    GetCurrentOperatorResponse getCurrentOperatorResponse = new GetCurrentOperatorResponse(backstageUser.getId(), backstageUser.getUserAccount(),
+                            backstageUser.getRealName());
+                    getCurrentOperatorResponseList.add(getCurrentOperatorResponse);
+                }
+            }
+            GetManyCurrentOperatorResponse getManyCurrentOperatorResponse = new GetManyCurrentOperatorResponse();
+            getManyCurrentOperatorResponse.setGetCurrentOperatorResponseList(getCurrentOperatorResponseList);
+            return getManyCurrentOperatorResponse;
+        } else {
+            throw new BusinessException(BusinessCode.THIS_USERACCOUNT_NOT_EXIST);
+        }
+    }
+
+
+    @Override
+    public MidResponse<LoginResponse> login(LoginRequest loginUserRequest) {
+        MidResponse<LoginResponse> result = new MidResponse();
+        String userName = loginUserRequest.getUserName();
+        String password = MD5.encodeString(loginUserRequest.getPassword(), "UTF-8");
+        User backstageUser = backstageUserRepository.findUser(userName, password);
+        if (null == backstageUser) {
+            //输入的用户名或密码错误
+            result.setCode(BusinessCode.USERNAME_PASSWORD_ERROR.getCode());
+            result.setMsg(BusinessCode.USERNAME_PASSWORD_ERROR.getMsg());
+        } else {
+            //登录成功
+            //根据用户名查找token表看是否有记录
+            UserToken oldUserToken = findByUserName(userName);
+            String token = UUID.randomUUID().toString().replace("-", "");
+            log.info("生成的token是--->" + token);
+            UserToken userToken = new UserToken();
+            userToken.setUserAccount(userName);
+            userToken.setUserToken(token);
+            long currentTime = System.currentTimeMillis() + TOKEN_EXPIRED_TIME;
+            Date futureDate = new Date(currentTime);
+            //设置过期时间30分钟
+            userToken.setExpirationTime(futureDate);
+            Date date = new Date();
+            if (null != oldUserToken) {
+                userToken.setId(oldUserToken.getId());
+                userToken.setModifiedTime(date);
+                //有--->update
+                save(userToken);
+            } else {
+                //没有-->add
+                userToken.setCreateTime(date);
+                save(userToken);
+            }
+            // 查用户权限
+            MidResponse<FindAllUserMenuResponse> mid = getUserPermissionThroughRoleCode(backstageUser);
+            LoginResponse loginResponse = new LoginResponse();
+            if (null != mid) {
+                loginResponse.setUserRoleMenuDTO(mid.getData().getUserMenu());
+            }
+            loginResponse.setToken(token);
+            result.setData(loginResponse);
+            //更新最后登陆时间
+            backstageUser.setLastLoginTime(date);
+            backstageUser.setModifiedTime(date);
+            backstageUserRepository.save(backstageUser);
+            result.setCode(BusinessCode.SUCCESS.getCode());
+            result.setMsg(BusinessCode.SUCCESS.getMsg());
+
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public MidResponse signOut(SignOutRequest request) {
+        //退出,让token失效
+        Date date = new Date();
+        int count = userTokenRepository.updateTokenForSignOut(date, request.getUserAccount());
+        if (count == 1) {
+            return MidResponse.buildSuccessful();
+        } else {
+            throw new BusinessException(BusinessCode.DATA_UPDATE_ERROR);
+        }
+    }
+
+    public UserToken findByUserName(String userName) {
+        return userTokenRepository.queryByUserAccount(userName);
+    }
+
+    @Transactional
+    public void updateUserToken(UserToken ut) {
+        userTokenRepository.updateUserTokenTable(ut.getUserToken(), ut.getExpirationTime(), ut.getModifiedTime(), ut.getUserAccount());
+    }
+
+    public UserToken save(UserToken userToken) {
+        return userTokenRepository.save(userToken);
+    }
+
+    /**
+     * 通过用户信息查用户的权限
+     *
+     * @param user
+     * @return
+     */
+    public MidResponse<FindAllUserMenuResponse> getUserPermissionThroughRoleCode(User user) {
+        MidResponse midResponse = MidResponse.buildSuccessful();
+        FindAllUserMenuResponse menuResponse = new FindAllUserMenuResponse();
+        UserRoleMenuDTO userRoleMenuDTO = new UserRoleMenuDTO();
+        // 查找用户实体
+        userRoleMenuDTO.setUserAccount(user.getUserAccount());
+        userRoleMenuDTO.setRealName(user.getRealName());
+        userRoleMenuDTO.setGroupCode(user.getGroupCode());
+        userRoleMenuDTO.setId(user.getId());
+        //查找角色实体
+        String userRoleCode = user.getRoleCode();
+        Role role = roleRepository.findEffectiveByCode(userRoleCode);
+        if (null == role) {
+            log.error("cant found role with code={}", userRoleCode);
+            throw new BusinessException(BusinessCode.USERNAME_PASSWORD_ERROR);
+        }
+        userRoleMenuDTO.setRoleCode(userRoleCode);
+        userRoleMenuDTO.setRoleName(role.getRoleName());
+
+        //查找角色下的菜单
+        List<RoleMenuButton> roleMenuButtons = roleMenuButtonRepository.findByRoleCodeAndEnableFlag(userRoleCode, true);
+        if (CollectionUtils.isEmpty(roleMenuButtons)) {
+            log.warn("cant found menu button with roleCode=", userRoleCode);
+            menuResponse.setUserMenu(userRoleMenuDTO);
+            midResponse.setData(menuResponse);
+            return midResponse;
+        }
+
+        Map<String, MenuDTO> menuDTOMap = Maps.newHashMap();
+        //Set<MenuDTO> parentMenus = new HashSet<>();
+        List<MenuDTO> parentMenus = new ArrayList<>();
+        for (RoleMenuButton roleMenuButton : roleMenuButtons) {
+            String menuCode = roleMenuButton.getMenuCode();
+            Menu menu = menuRepository.findByMenuCode(menuCode);
+            MenuDTO menuDTO;
+            if (null == menu) {
+                continue;
+            } else {
+                menuDTO = menuDTOMap.get(menu.getMenuCode());
+                if (null == menuDTO) {
+                    menuDTO = new MenuDTO();
+                    BeanUtils.copyProperties(menu, menuDTO);
+                }
+            }
+            menuDTOMap.putIfAbsent(menuDTO.getMenuCode(), menuDTO);
+            // 父级菜单
+            //if (Boolean.TRUE.equals(menu.getIsParent())) {
+            if (0 != menu.getIsParent()) {
+                if (!parentMenus.contains(menuDTO)) {
+                    parentMenus.add(menuDTO);
+                }
+            } else {
+                String parentMenuCode = menuDTO.getParentCode();
+                MenuDTO curParentMenuDTO = new MenuDTO();
+                // 父级菜单已经放入MAP
+                if (menuDTOMap.keySet().contains(parentMenuCode)) {
+                    curParentMenuDTO = menuDTOMap.get(parentMenuCode);
+                } else {
+                    Menu parentMenu = menuRepository.findByMenuCode(parentMenuCode);
+                    if (null != parentMenu) {
+                        BeanUtils.copyProperties(parentMenu, curParentMenuDTO);
+                        menuDTOMap.put(curParentMenuDTO.getMenuCode(), curParentMenuDTO);
+                        parentMenus.add(curParentMenuDTO);
+                    }
+                }
+
+                if (!curParentMenuDTO.getSubMenus().contains(menuDTO)) {
+                    curParentMenuDTO.getSubMenus().add(menuDTO);
+                }
+                Button button = buttonRepository.findByButtonCodeAndEnableFlag(roleMenuButton.getButtonCode(), true);
+                MenuButtonDTO buttonDTO = new MenuButtonDTO();
+                if (null != button) {
+                    BeanUtils.copyProperties(button, buttonDTO);
+                    menuDTO.getButtons().add(buttonDTO);
+                }
+
+            }
+        }
+        //对ArrayList进行排序
+        Comparator comp = new MenuButtonDTOComparator();
+        Comparator menuComp = new MenuDTOComparator();
+        //Collections.sort(list, comp);
+        Collections.sort(parentMenus, menuComp);
+        for (MenuDTO menuDTO : parentMenus) {
+            List<MenuDTO> subMenus = menuDTO.getSubMenus();
+            for (MenuDTO subMenu : subMenus) {
+                List<MenuButtonDTO> buttons = subMenu.getButtons();
+                Collections.sort(buttons, comp);
+            }
+            Collections.sort(subMenus, menuComp);
+
+        }
+        userRoleMenuDTO.setMenus(parentMenus);
+        menuResponse.setUserMenu(userRoleMenuDTO);
+        midResponse.setData(menuResponse);
+        return midResponse;
+    }
+
+
+    /**
+     * 通过用户信息查用户的权限
+     *
+     * @param user
+     * @return
+     */
+    /*public MidResponse<FindAllUserMenuResponse> getUserPermissionThroughRoleCode(User user) {
+        MidResponse midResponse = MidResponse.buildSuccessful();
+        FindAllUserMenuResponse menuResponse = new FindAllUserMenuResponse();
+        UserRoleMenuDTO userRoleMenuDTO = new UserRoleMenuDTO();
+        // 查找用户实体
+        userRoleMenuDTO.setUserAccount(user.getUserAccount());
+        userRoleMenuDTO.setRealName(user.getRealName());
+        userRoleMenuDTO.setGroupCode(user.getGroupCode());
+        userRoleMenuDTO.setId(user.getId());
+        //查找角色实体
+        String userRoleCode = user.getRoleCode();
+        Role role = roleRepository.findEffectiveByCode(userRoleCode);
+        if (null == role) {
+            log.error("cant found role with code={}", userRoleCode);
+            throw new BusinessException(BusinessCode.USERNAME_PASSWORD_ERROR);
+        }
+        userRoleMenuDTO.setRoleCode(userRoleCode);
+        userRoleMenuDTO.setRoleName(role.getRoleName());
+
+        //查找角色下的菜单
+        List<RoleMenuButton> roleMenuButtons = roleMenuButtonRepository.findByRoleCodeAndEnableFlag(userRoleCode, true);
+        if (CollectionUtils.isEmpty(roleMenuButtons)) {
+            log.warn("cant found menu button with roleCode=", userRoleCode);
+            menuResponse.setUserMenu(userRoleMenuDTO);
+            midResponse.setData(menuResponse);
+            return midResponse;
+        }
+
+        Map<String, MenuDTO> menuDTOMap = Maps.newHashMap();
+        //Set<MenuDTO> parentMenus = new HashSet<>();
+        List<MenuDTO> parentMenus = new ArrayList<>();
+        for (RoleMenuButton roleMenuButton : roleMenuButtons) {
+            String menuCode = roleMenuButton.getMenuCode();
+            Menu menu = menuRepository.findByMenuCode(menuCode);
+            MenuDTO menuDTO;
+            if (null == menu) {
+                continue;
+            } else {
+                menuDTO = menuDTOMap.get(menu.getMenuCode());
+                if (null == menuDTO) {
+                    menuDTO = new MenuDTO();
+                    BeanUtils.copyProperties(menu, menuDTO);
+                }
+            }
+            menuDTOMap.putIfAbsent(menuDTO.getMenuCode(), menuDTO);
+            // 父级菜单
+            //if (Boolean.TRUE.equals(menu.getIsParent())) {
+            if (0 != menu.getIsParent()) {
+                if (!parentMenus.contains(menuDTO)) {
+                    parentMenus.add(menuDTO);
+                }
+            } else {
+                String parentMenuCode = menuDTO.getParentCode();
+                MenuDTO curParentMenuDTO = new MenuDTO();
+                // 父级菜单已经放入MAP
+                if (menuDTOMap.keySet().contains(parentMenuCode)) {
+                    curParentMenuDTO = menuDTOMap.get(parentMenuCode);
+                } else {
+                    Menu parentMenu = menuRepository.findByMenuCode(parentMenuCode);
+                    if (null != parentMenu) {
+                        BeanUtils.copyProperties(parentMenu, curParentMenuDTO);
+                        menuDTOMap.put(curParentMenuDTO.getMenuCode(), curParentMenuDTO);
+                        parentMenus.add(curParentMenuDTO);
+                    }
+                }
+
+                if (!curParentMenuDTO.getSubMenus().contains(menuDTO)) {
+                    curParentMenuDTO.getSubMenus().add(menuDTO);
+                }
+                Button button = buttonRepository.findByButtonCodeAndEnableFlag(roleMenuButton.getButtonCode(), true);
+                MenuButtonDTO buttonDTO = new MenuButtonDTO();
+                if (null != button) {
+                    BeanUtils.copyProperties(button, buttonDTO);
+                    menuDTO.getButtons().add(buttonDTO);
+                }
+
+            }
+        }
+        //对ArrayList进行排序
+        Comparator comp = new MenuButtonDTOComparator();
+        Comparator menuComp = new MenuDTOComparator();
+        //Collections.sort(list, comp);
+        Collections.sort(parentMenus, menuComp);
+        for (MenuDTO menuDTO : parentMenus) {
+            List<MenuDTO> subMenus = menuDTO.getSubMenus();
+            for (MenuDTO subMenu : subMenus) {
+                List<MenuButtonDTO> buttons = subMenu.getButtons();
+                Collections.sort(buttons, comp);
+            }
+            Collections.sort(subMenus, menuComp);
+
+        }
+        userRoleMenuDTO.setMenus(parentMenus);
+        menuResponse.setUserMenu(userRoleMenuDTO);
+        midResponse.setData(menuResponse);
+        return midResponse;
+    }*/
+
+
+    @Override
+    public GetSalesmanByRealNameResponse getSalesmanByRealName(GetSalesmanByRealNameRequest request) {
+        //根据名字模糊查询所有的id
+        List<User> users = backstageUserRepository.getSalesmanByRealName(request.getSalesman());
+        List<GetCurrentOperatorResponse> getCurrentOperatorResponses = new ArrayList<>();
+        if (null != users && !users.isEmpty()) {
+            for (User user : users) {
+                GetCurrentOperatorResponse getCurrentOperatorResponse = new GetCurrentOperatorResponse();
+                BeanUtils.copyProperties(user, getCurrentOperatorResponse);
+                getCurrentOperatorResponses.add(getCurrentOperatorResponse);
+            }
+        }
+        return new GetSalesmanByRealNameResponse(getCurrentOperatorResponses);
+    }
+
+    @Override
+    public GrantPersonToVisitProjectResponse grantPersonToVisitProject(GrantPersonToVisitProjectRequest request) {
+        User user = backstageUserRepository.findThroughIdAndEnable(request.getUserId());
+        if (user == null) {
+            throw new BusinessException(BusinessCode.PARAM_ERROR);
+        }
+
+        MidUserProject midUserProject = new MidUserProject();
+        midUserProject.setIsEnable(true);
+        midUserProject.setUserId(request.getUserId());
+        midUserProject.setProjectCode(request.getProjectCode());
+        midUserProject.setGmtCreate(new Date());
+        userProjectRepository.save(midUserProject);
+
+        return new GrantPersonToVisitProjectResponse();
+    }
+
+
+    @Override
+    public MidResponse checkH5Token(MidCheckTokenRequest request) {
+
+        MidUserH5Token midUserH5Token = midUserH5TokenRepo.findFirstByUserToken(request.getToken());
+        if (null == midUserH5Token) {
+            throw new BusinessException(BusinessCode.CODE_TOKEN_INVALID);
+        }
+
+        if (midUserH5Token.getExpirationTime().before(new Date())) {
+            throw new BusinessException(BusinessCode.TOKEN_EXPIRED);
+        }
+
+        return MidResponse.buildSuccessful();
+    }
+}
