@@ -19,3 +19,8 @@
 ​	3.3@ImportBeanDefinitionRegistrar手动注册bean到容器中
 
 4.使用BeanFactory给容器中添加一个组件
+
+
+**spring中beanFactory和factoryBean**
+beanFactory是创建bean的工厂，它是spring的容器。
+factoryBean是工厂bean，是工厂bean，通过getObject()获取它创建的对象，通过&name获取它本身。
